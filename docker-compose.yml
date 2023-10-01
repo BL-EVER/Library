@@ -1,0 +1,55 @@
+version: '3.4'
+
+services:
+  librarycatalogservice:
+    image: ${DOCKER_REGISTRY-}librarycatalogservice
+    build:
+      context: .
+      dockerfile: LibraryCatalogService/Dockerfile
+  libraryorderservice:
+    image: ${DOCKER_REGISTRY-}libraryorderservice
+    build:
+      context: .
+      dockerfile: LibraryOrderService/Dockerfile
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    ports:
+      - '80:80'
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+  db:
+    image: postgres:latest
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - '5432:5432'
+    volumes: 
+      - ./db:/var/lib/postgresql/data
+  cache:
+    image: redis:latest
+    ports:
+      - '6379:6379'
+  keycloak:
+    image: quay.io/keycloak/keycloak
+    depends_on:
+     - db
+    ports:
+      - 8080:8080
+      #- 8443:8443
+    command:
+      - "start-dev --proxy edge --hostname-strict=false"
+      #- "start-dev"
+      #- "start"
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_DB: postgres
+      KC_DB_URL_HOST: db
+      KC_DB_URL_DATABASE: keycloak
+      KC_DB_URL_PORT: 5432
+      KC_DB_USERNAME: postgres
+      KC_DB_PASSWORD: postgres
+      PROXY_ADDRESS_FORWARDING: true
+      #KC_HOSTNAME: localhost
