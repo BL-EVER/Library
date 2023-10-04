@@ -1,5 +1,6 @@
 using Common.ActionFilters;
 using Common.Authorizations;
+using Common.Health;
 using Common.HttpClients;
 using Common.Repository;
 using Common.Service;
@@ -103,6 +104,11 @@ builder.Services.AddScoped<ICachedHttpClientService, CachedHttpClientService>();
 builder.Services.AddHttpClient();
 builder.Services.AddCustomHttpClientPolicies();
 
+builder.Services.AddHealthChecks()
+        .AddCheck("Redis", new RedisHealthCheck(builder.Configuration.GetConnectionString("CACHE")))
+        .AddCheck<ApplicationHealthCheck>("Application")
+        .AddDbContextCheck<AppDbContext>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -125,5 +131,10 @@ app.UseAuthorization();
 
 
 app.MapControllers();
+
+app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    ResponseWriter = CustomOutput.WriteResponse
+});
 
 app.Run();

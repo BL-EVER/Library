@@ -1,5 +1,6 @@
 using Common.Authorizations;
 using Common.ExceptionManagement;
+using Common.Health;
 using Common.HttpClients;
 using Common.Repository;
 using Common.Service;
@@ -12,6 +13,7 @@ using LibraryCatalogService.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.OpenApi.Models;
 using Polly;
 using StackExchange.Redis;
@@ -100,6 +102,12 @@ builder.Services.AddScoped<ICachedHttpClientService, CachedHttpClientService>();
 builder.Services.AddHttpClient();
 builder.Services.AddCustomHttpClientPolicies();
 
+builder.Services.AddHealthChecks()
+        .AddCheck("Redis", new RedisHealthCheck(builder.Configuration.GetConnectionString("CACHE")))
+        .AddCheck<ApplicationHealthCheck>("Application")
+        .AddDbContextCheck<AppDbContext>();
+
+
 var app = builder.Build();
 
 app.UseMiddleware<ExceptionMiddleware>();
@@ -123,5 +131,10 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    ResponseWriter = CustomOutput.WriteResponse
+});
 
 app.Run();
